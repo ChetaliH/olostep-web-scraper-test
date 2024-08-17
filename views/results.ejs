@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scraped Results</title>
+</head>
+<body>
+  <h1>Scraped Results</h1>
+  <a href="/">Go back</a>
+  <ul>
+    <% scrapedData.forEach(data => { %>
+      <li>
+        <h2>Selector: <%= data.selector %></h2>
+        <ul>
+          <% data.data.forEach(item => { %>
+            <li><%= item %></li>
+          <% }) %>
+        </ul>
+      </li>
+    <% }) %>
+  </ul>
+</body>
+</html>

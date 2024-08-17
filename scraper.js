@@ -1,60 +1,54 @@
+const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const readline = require('readline');
+const path = require('path');
 const { MongoClient } = require('mongodb');
 
-// MongoDB connection URI
-const uri = 'mongodb://localhost:27017';  // Default URI for local MongoDB
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+const app = express();
+const port = 5500;
 
-// Create an interface for user input
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
+// MongoDB URI and Database
+const mongoURI = 'mongodb://localhost:27017'; // Change this if using MongoDB Atlas
+const dbName = 'scraperDB'; // Name of your database
 
-// Function to ask questions
-const askQuestion = (question) => {
-  return new Promise(resolve => rl.question(question, resolve));
-};
+// Set up EJS as the view engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 
-// Function to store data in MongoDB
-const storeDataInMongoDB = async (data) => {
+// Middleware to parse URL-encoded bodies
+app.use(express.urlencoded({ extended: true }));
+
+// MongoDB client setup
+const client = new MongoClient(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true });
+
+async function connectToDatabase() {
   try {
     await client.connect();
     console.log('Connected to MongoDB');
-
-    const database = client.db('scraperDB'); // Database name
-    const collection = database.collection('scrapedData'); // Collection name
-
-    // Insert data
-    const result = await collection.insertMany(data);
-    console.log('Data inserted:', result.insertedIds);
-  } catch (error) {
-    console.error('Error:', error);
-  } finally {
-    await client.close();
+    return client.db(dbName);
+  } catch (err) {
+    console.error('Failed to connect to MongoDB', err);
   }
-};
+}
 
-const scrapeData = async () => {
+// Route to render the form
+app.get('/', (req, res) => {
+  res.render('index');
+});
+
+// Route to handle form submission and scraping
+app.post('/scrape', async (req, res) => {
+  const url = req.body.url;
+  const selectors = req.body.selectors.split(',').map(selector => selector.trim());
+  
   try {
-    // Get URL and selectors from the user
-    const url = await askQuestion('Enter the URL to scrape: ');
-    const selectors = await askQuestion('Enter CSS selectors (comma separated): ');
-
-    // Close the readline interface
-    rl.close();
-
     // Fetch the webpage
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
 
-    // Split the selectors and scrape data
-    const selectorArray = selectors.split(',').map(selector => selector.trim());
+    // Scrape data
     const scrapedData = [];
-
-    selectorArray.forEach(selector => {
+    selectors.forEach(selector => {
       const data = [];
       $(selector).each((i, element) => {
         data.push($(element).text().trim());
@@ -67,15 +61,20 @@ const scrapeData = async () => {
       }
     });
 
-    console.log('Scraped data:', scrapedData);
-
     // Store data in MongoDB
-    await storeDataInMongoDB(scrapedData);
+    const db = await connectToDatabase();
+    const collection = db.collection('scrapedData');
+    await collection.insertOne({ url, selectors, scrapedData });
+
+    // Render the results
+    res.render('results', { scrapedData });
 
   } catch (error) {
-    console.error('Error:', error);
+    res.status(500).send('Error occurred: ' + error.message);
   }
-};
+});
 
-// Start the scraping process
-scrapeData();
+// Start the server
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
