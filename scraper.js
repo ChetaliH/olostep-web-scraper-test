@@ -18,6 +18,10 @@ app.set('views', path.join(__dirname, 'views'));
 // Middleware to parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from the "public" directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+
 // MongoDB client setup
 const client = new MongoClient(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true });
 
