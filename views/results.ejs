@@ -1,23 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Scraped Results</title>
-  <link rel="stylesheet" href="/styles.css"> <!-- Link to the CSS file -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scraped Results</title>
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <h1>Scraped Results</h1>
-  <a href="/">Go back</a>
-  <ul>
-    <% scrapedData.forEach(data => { %>
-      <li>
-        <h2>Selector: <%= data.selector %></h2>
-        <ul>
-          <% data.data.forEach(item => { %>
-            <li><%= item %></li>
-          <% }) %>
-        </ul>
-      </li>
-    <% }) %>
-  </ul>
+    <h1>Scraped Results</h1>
+    <a href="/">Go back</a>
+    <ul>
+        <% scrapedData.forEach(data => { %>
+            <li>
+                <h2>Selector: <%= data.selector %></h2>
+                <ul>
+                    <% data.data.forEach(item => { %>
+                        <li>
+                            <% if (item.match(/\.(jpeg|jpg|gif|png)$/)) { %>
+                                <img src="<%= item %>" alt="Image" style="max-width: 200px;">
+                            <% } else if (item.match(/^https?:\/\//)) { %>
+                                <a href="<%= item %>"><%= item %></a>
+                            <% } else { %>
+                                <%= item %>
+                            <% } %>
+                        </li>
+                    <% }) %>
+                </ul>
+            </li>
+        <% }) %>
+    </ul>
 </body>
 </html>

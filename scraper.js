@@ -1,15 +1,15 @@
 const express = require('express');
-const axios = require('axios');
-const cheerio = require('cheerio');
+const puppeteer = require('puppeteer');
 const path = require('path');
 const { MongoClient } = require('mongodb');
 
+// MongoDB connection string and database/collection names
+const mongoURI = 'mongodb://localhost:27017';
+const dbName = 'scraperDB';
+const collectionName = 'scrapedData';
+
 const app = express();
 const port = 5500;
-
-// MongoDB URI and Database
-const mongoURI = 'mongodb://localhost:27017'; // Change this if using MongoDB Atlas
-const dbName = 'scraperDB'; // Name of your database
 
 // Set up EJS as the view engine
 app.set('view engine', 'ejs');
@@ -21,19 +21,8 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use(express.static(path.join(__dirname, 'public')));
 
-// MongoDB client setup
-const client = new MongoClient(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true });
-
-async function connectToDatabase() {
-  try {
-    await client.connect();
-    console.log('Connected to MongoDB');
-    return client.db(dbName);
-  } catch (err) {
-    console.error('Failed to connect to MongoDB', err);
-  }
-}
 
 // Route to render the form
 app.get('/', (req, res) => {
@@ -44,31 +33,48 @@ app.get('/', (req, res) => {
 app.post('/scrape', async (req, res) => {
   const url = req.body.url;
   const selectors = req.body.selectors.split(',').map(selector => selector.trim());
-  
+
   try {
-    // Fetch the webpage
-    const response = await axios.get(url);
-    const $ = cheerio.load(response.data);
+    // Launch Puppeteer
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    
+    // Navigate to the URL
+    await page.goto(url, { waitUntil: 'networkidle2' });
 
-    // Scrape data
-    const scrapedData = [];
-    selectors.forEach(selector => {
+    // Scrape data using the provided selectors, including image sources
+    const scrapedData = await page.evaluate((selectors) => {
       const data = [];
-      $(selector).each((i, element) => {
-        data.push($(element).text().trim());
+      selectors.forEach(selector => {
+        const elements = Array.from(document.querySelectorAll(selector));
+        if (elements.length > 0) {
+          data.push({
+            selector,
+            data: elements.map(element => {
+              if (element.tagName.toLowerCase() === 'img') {
+                return element.src;
+              } else {
+                return element.textContent.trim();
+              }
+            })
+          });
+        }
       });
-      if (data.length > 0) {
-        scrapedData.push({
-          selector,
-          data
-        });
-      }
-    });
+      return data;
+    }, selectors);
 
-    // Store data in MongoDB
-    const db = await connectToDatabase();
-    const collection = db.collection('scrapedData');
-    await collection.insertOne({ url, selectors, scrapedData });
+    // Connect to MongoDB and insert the scraped data
+    const client = new MongoClient(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true });
+    await client.connect();
+    const db = client.db(dbName);
+    const collection = db.collection(collectionName);
+
+    await collection.insertMany(scrapedData);
+
+    // Close the MongoDB connection
+    await client.close();
+
+    console.log('Scraped data saved to MongoDB');
 
     // Render the results
     res.render('results', { scrapedData });

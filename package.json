@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-     "start": "node scraper.js"
+    "start": "node scraper.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +15,8 @@
     "cheerio": "^1.0.0",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
-    "mongodb": "^6.8.0"
+    "mongodb": "^6.8.0",
+    "mongoose": "^8.5.3",
+    "puppeteer": "^23.1.0"
   }
 }
