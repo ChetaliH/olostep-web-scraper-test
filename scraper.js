@@ -3,7 +3,6 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const { MongoClient } = require('mongodb');
 
-// MongoDB connection string and database/collection names
 const mongoURI = 'mongodb://localhost:27017';
 const dbName = 'scraperDB';
 const collectionName = 'scrapedData';
@@ -21,11 +20,13 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-
-// Route to render the form
+// Serve landing.html directly from the root URL
 app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+});
+
+// Render index.ejs when accessing /index
+app.get('/index', (req, res) => {
   res.render('index');
 });
 
